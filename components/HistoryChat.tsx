@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { chatWithArtHistorian } from '../services/geminiService';
 import { ChatMessage } from '../types';
 import ReactMarkdown from 'react-markdown';
-import { Send, User, Bot, Loader2 } from 'lucide-react';
+import { Send, User, Bot, Loader2, Globe } from 'lucide-react';
 
 const HistoryChat: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -47,13 +47,14 @@ const HistoryChat: React.FC = () => {
         parts: [{ text: m.text }]
       }));
 
-      const responseText = await chatWithArtHistorian(history, userMsg.text);
+      const response = await chatWithArtHistorian(history, userMsg.text);
       
       const botMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        text: responseText,
-        timestamp: new Date()
+        text: response.text,
+        timestamp: new Date(),
+        sources: response.sources
       };
 
       setMessages(prev => [...prev, botMsg]);
@@ -79,7 +80,7 @@ const HistoryChat: React.FC = () => {
         </div>
         <div>
             <h2 className="font-serif text-lg font-semibold text-gray-800">El Comissari Virtual</h2>
-            <p className="text-xs text-gray-500">Expert en Història de l'Art</p>
+            <p className="text-xs text-gray-500">Expert en Història de l'Art amb accés a Google Search</p>
         </div>
       </div>
 
@@ -98,6 +99,24 @@ const HistoryChat: React.FC = () => {
                 <div className="prose prose-sm max-w-none dark:prose-invert">
                   <ReactMarkdown>{msg.text}</ReactMarkdown>
                 </div>
+                
+                {msg.sources && msg.sources.length > 0 && (
+                   <div className="mt-4 pt-3 border-t border-gray-200/20">
+                     <p className="text-xs font-semibold mb-2 flex items-center gap-1 opacity-80">
+                       <Globe size={12} /> Fonts:
+                     </p>
+                     <ul className="space-y-1">
+                       {msg.sources.map((source, idx) => (
+                         <li key={idx} className="text-xs truncate">
+                           <a href={source.uri} target="_blank" rel="noopener noreferrer" className="hover:underline opacity-70 hover:opacity-100">
+                             {source.title}
+                           </a>
+                         </li>
+                       ))}
+                     </ul>
+                   </div>
+                )}
+
                 <span className={`text-[10px] mt-2 block opacity-70 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                   {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
@@ -113,7 +132,7 @@ const HistoryChat: React.FC = () => {
                 </div>
                 <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-gray-100 shadow-sm flex items-center gap-2">
                     <Loader2 className="animate-spin h-4 w-4 text-indigo-500" />
-                    <span className="text-sm text-gray-500">Pensant...</span>
+                    <span className="text-sm text-gray-500">Cercant informació...</span>
                 </div>
              </div>
           </div>
@@ -127,7 +146,7 @@ const HistoryChat: React.FC = () => {
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Pregunta sobre Picasso, el Renaixement, teoria del color..."
+            placeholder="Pregunta sobre artistes, obres o dades actuals..."
             className="flex-1 p-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
           />
           <button

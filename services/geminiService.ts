@@ -1,5 +1,5 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { ArtConcept, AnalysisResult } from "../types";
+import { ArtConcept, ArtConceptResult, ChatResponse, WebSource } from "../types";
 
 const apiKey = process.env.API_KEY;
 // Initialize the client. The key is guaranteed to be in process.env.API_KEY
@@ -23,12 +23,25 @@ const cleanAndParseJson = <T>(text: string): T => {
   }
 };
 
-export const generateArtConcept = async (difficulty: string, focus: string): Promise<ArtConcept> => {
+const extractSources = (response: GenerateContentResponse): WebSource[] => {
+  const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+  if (!chunks) return [];
+  
+  return chunks
+    .filter(chunk => chunk.web?.uri && chunk.web?.title)
+    .map(chunk => ({
+      uri: chunk.web!.uri!,
+      title: chunk.web!.title!
+    }));
+};
+
+export const generateArtConcept = async (difficulty: string, focus: string, topic?: string): Promise<ArtConceptResult> => {
   const prompt = `
     Actua com un professor d'arts plàstiques creatiu. Genera una idea de projecte artístic per a un estudiant de nivell ${difficulty}.
     L'enfocament principal ha de ser: ${focus}.
+    ${topic ? `IMPORTANT: El projecte ha d'estar basat o inspirat en el tema: "${topic}". Utilitza Google Search per trobar referències reals, artistes o context si cal.` : ''}
     
-    Retorna la resposta EXCLUSIVAMENT en format JSON amb aquesta estructura, sense text addicional:
+    Retorna la resposta EXCLUSIVAMENT en format JSON amb aquesta estructura, sense text addicional fora del JSON (no incloguis explicacions prèvies ni posteriors):
     {
       "theme": "Nom del tema (en català)",
       "technique": "Tècnica suggerida (en català)",
@@ -38,16 +51,21 @@ export const generateArtConcept = async (difficulty: string, focus: string): Pro
   `;
 
   try {
+    // When using tools, we cannot strictly enforce responseMimeType: "application/json" as it might conflict with tool output text.
+    // We rely on the prompt to ensure JSON output.
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: MODEL_TEXT,
       contents: prompt,
       config: {
-        responseMimeType: "application/json",
+        tools: [{ googleSearch: {} }]
       }
     });
     
     const text = response.text || "{}";
-    return cleanAndParseJson<ArtConcept>(text);
+    const concept = cleanAndParseJson<ArtConcept>(text);
+    const sources = extractSources(response);
+
+    return { concept, sources };
   } catch (error) {
     console.error("Error generating concept:", error);
     throw error;
@@ -81,18 +99,24 @@ export const analyzeImage = async (base64Image: string, userPrompt?: string): Pr
   }
 };
 
-export const chatWithArtHistorian = async (history: {role: string, parts: {text: string}[]}[], message: string): Promise<string> => {
+export const chatWithArtHistorian = async (history: {role: string, parts: {text: string}[]}[], message: string): Promise<ChatResponse> => {
   try {
     const chat = ai.chats.create({
       model: MODEL_TEXT,
       history: history,
       config: {
-        systemInstruction: "Ets un expert en Història de l'Art i professor de secundària. Respon als dubtes dels estudiants de manera didàctica, precisa i sempre en català. Fomenta el pensament crític."
+        systemInstruction: "Ets un expert en Història de l'Art i professor de secundària. Respon als dubtes dels estudiants de manera didàctica, precisa i sempre en català. Utilitza Google Search per trobar informació actualitzada sobre exposicions, descobriments recents o dades precises si és necessari.",
+        tools: [{ googleSearch: {} }]
       }
     });
 
-    const result = await chat.sendMessage({ message: message });
-    return result.text || "";
+    const response = await chat.sendMessage({ message: message });
+    const sources = extractSources(response);
+
+    return { 
+      text: response.text || "",
+      sources: sources
+    };
   } catch (error) {
     console.error("Error in chat:", error);
     throw error;

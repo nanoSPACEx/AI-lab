@@ -3,6 +3,7 @@ export interface ChatMessage {
   role: 'user' | 'model';
   text: string;
   timestamp: Date;
+  sources?: WebSource[];
 }
 
 export interface ArtConcept {
@@ -10,6 +11,21 @@ export interface ArtConcept {
   technique: string;
   material: string;
   description: string;
+}
+
+export interface WebSource {
+  uri: string;
+  title: string;
+}
+
+export interface ArtConceptResult {
+  concept: ArtConcept;
+  sources: WebSource[];
+}
+
+export interface ChatResponse {
+  text: string;
+  sources: WebSource[];
 }
 
 export enum AppMode {

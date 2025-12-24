@@ -1,19 +1,24 @@
 import React, { useState } from 'react';
 import { generateArtConcept } from '../services/geminiService';
-import { ArtConcept } from '../types';
-import { Sparkles, Loader2, RefreshCw, Download } from 'lucide-react';
+import { ArtConcept, WebSource } from '../types';
+import { Sparkles, Loader2, RefreshCw, Download, Search, Globe } from 'lucide-react';
 
 const ConceptGenerator: React.FC = () => {
   const [difficulty, setDifficulty] = useState('Intermedi');
   const [focus, setFocus] = useState('Expressivitat');
+  const [topic, setTopic] = useState('');
   const [loading, setLoading] = useState(false);
   const [concept, setConcept] = useState<ArtConcept | null>(null);
+  const [sources, setSources] = useState<WebSource[]>([]);
 
   const handleGenerate = async () => {
     setLoading(true);
+    setConcept(null);
+    setSources([]);
     try {
-      const result = await generateArtConcept(difficulty, focus);
-      setConcept(result);
+      const result = await generateArtConcept(difficulty, focus, topic);
+      setConcept(result.concept);
+      setSources(result.sources);
     } catch (error) {
       alert("Error generant el concepte. Torna-ho a provar.");
     } finally {
@@ -24,16 +29,23 @@ const ConceptGenerator: React.FC = () => {
   const handleDownload = () => {
     if (!concept) return;
 
-    const textContent = `PROJECTE D'ART: ${concept.theme}
+    let textContent = `PROJECTE D'ART: ${concept.theme}
 ----------------------------------------
 Tècnica: ${concept.technique}
 Materials: ${concept.material}
 
 DESCRIPCIÓ:
 ${concept.description}
-
-Generat per ArtStudio AI
 `;
+
+    if (sources.length > 0) {
+      textContent += `\nFONTS D'INSPIRACIÓ:\n`;
+      sources.forEach(source => {
+        textContent += `- ${source.title}: ${source.uri}\n`;
+      });
+    }
+
+    textContent += `\nGenerat per ArtStudio AI`;
 
     const blob = new Blob([textContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -81,6 +93,21 @@ Generat per ArtStudio AI
               <option value="Disseny">Disseny i Composició</option>
             </select>
           </div>
+        </div>
+
+        <div className="space-y-2 mb-6">
+          <label className="text-sm font-medium text-gray-700">Tema o Concepte específic (Opcional)</label>
+          <div className="relative">
+             <input 
+               type="text" 
+               value={topic}
+               onChange={(e) => setTopic(e.target.value)}
+               placeholder="Ex: Canvi climàtic, Futurisme, La ciutat..."
+               className="w-full p-3 pl-10 rounded-lg border border-gray-300 bg-gray-50 focus:ring-2 focus:ring-indigo-500 outline-none"
+             />
+             <Search className="absolute left-3 top-3.5 h-5 w-5 text-gray-400" />
+          </div>
+          <p className="text-xs text-gray-500">Utilitzarem Google Search per trobar inspiració si especifiques un tema.</p>
         </div>
 
         <button
@@ -132,6 +159,28 @@ Generat per ArtStudio AI
               <span className="text-xs uppercase tracking-wide text-gray-500 font-semibold block mb-2">Descripció del Projecte</span>
               <p className="text-gray-700 leading-relaxed text-lg font-light">{concept.description}</p>
             </div>
+
+            {sources.length > 0 && (
+              <div className="border-t border-gray-100 pt-4 mt-4">
+                <h4 className="text-sm font-semibold text-gray-600 flex items-center gap-2 mb-3">
+                  <Globe className="h-4 w-4" /> Fonts i Referències
+                </h4>
+                <ul className="space-y-2">
+                  {sources.map((source, index) => (
+                    <li key={index} className="text-sm">
+                      <a 
+                        href={source.uri} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-indigo-600 hover:underline flex items-start gap-2"
+                      >
+                         <span className="text-gray-400">•</span> {source.title}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       )}
