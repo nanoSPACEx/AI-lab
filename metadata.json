@@ -1,0 +1,8 @@
+{
+  "name": "ArtStudio AI - Assistent d'Arts",
+  "description": "Una suite d'eines d'IA per a professors i estudiants d'arts plàstiques: generació de conceptes, anàlisi d'imatges i xat històric.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
