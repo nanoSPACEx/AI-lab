@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { generateArtConcept } from '../services/geminiService';
 import { ArtConcept } from '../types';
-import { Sparkles, Loader2, RefreshCw } from 'lucide-react';
+import { Sparkles, Loader2, RefreshCw, Download } from 'lucide-react';
 
 const ConceptGenerator: React.FC = () => {
   const [difficulty, setDifficulty] = useState('Intermedi');
@@ -19,6 +19,31 @@ const ConceptGenerator: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDownload = () => {
+    if (!concept) return;
+
+    const textContent = `PROJECTE D'ART: ${concept.theme}
+----------------------------------------
+Tècnica: ${concept.technique}
+Materials: ${concept.material}
+
+DESCRIPCIÓ:
+${concept.description}
+
+Generat per ArtStudio AI
+`;
+
+    const blob = new Blob([textContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `concepte-artistic-${concept.theme.replace(/\s+/g, '-').toLowerCase()}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -75,9 +100,22 @@ const ConceptGenerator: React.FC = () => {
         <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-indigo-100 animate-fade-in">
           <div className="bg-indigo-50 p-4 border-b border-indigo-100 flex justify-between items-center">
             <h3 className="font-serif text-xl text-indigo-900 font-semibold">{concept.theme}</h3>
-            <button onClick={handleGenerate} className="text-indigo-600 hover:text-indigo-800" title="Regenerar">
-               <RefreshCw className="h-4 w-4" />
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={handleDownload} 
+                className="text-indigo-600 hover:text-indigo-800 p-2 hover:bg-indigo-100 rounded-lg transition-colors" 
+                title="Descarregar TXT"
+              >
+                 <Download className="h-5 w-5" />
+              </button>
+              <button 
+                onClick={handleGenerate} 
+                className="text-indigo-600 hover:text-indigo-800 p-2 hover:bg-indigo-100 rounded-lg transition-colors" 
+                title="Regenerar"
+              >
+                 <RefreshCw className="h-5 w-5" />
+              </button>
+            </div>
           </div>
           <div className="p-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
